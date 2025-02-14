@@ -1,0 +1,31 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.8</VERSION>
+ <DEVICE>"ATmega328PB"</DEVICE>
+ <WORKING_DIR>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc</DIR>
+  <DIR>C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328PBdef.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\Debug\Lab2-assembly.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>Lab2-assembly.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>Lab2-assembly.map</FILE>
+  <FILE>Lab2-assembly.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <USART_Init><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>10</LINE></USART_Init>
+  <start><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>24</LINE></start>
+  <uint16_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>27</LINE></uint16_Rx>
+  <USART_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>42</LINE></USART_Rx>
+  <USART_Tx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>34</LINE></USART_Tx>
+ </LABELS>
+</ASSEMBLER_INFO>
