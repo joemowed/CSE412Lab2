@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm Fri Feb 14 12:48:17 2025
+AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm Sun Feb 16 12:56:42 2025
 
 
 EQU  SIGNATURE_000 0000001e
@@ -1147,8 +1147,33 @@ EQU  TIMER4_COMPBaddr 00000056
 EQU  TIMER4_OVFaddr 00000058
 EQU  INT_VECTORS_SIZE 0000005a
 EQU  CHAR_MAX     000000ff
-CSEG USART_Init   00000000
-CSEG start        0000000e
-CSEG uint16_Rx    00000011
-CSEG USART_Rx     0000001d
-CSEG USART_Tx     00000016
+CSEG USART_Init   00000020
+CSEG start        0000002c
+CSEG next         0000002d
+CSEG getTestCount 00000031
+CSEG bSortTestLoop 00000035
+CSEG end          0000002f
+CSEG uint16_Rx    000000a5
+CSEG bSortTestL1  0000003d
+CSEG bSortTestR   00000047
+CSEG bSortTest    00000048
+CSEG getData      00000094
+CSEG bubbleSort   0000004c
+CSEG testComplete 000000af
+CSEG bubbleL1     0000006a
+CSEG bubbleR      0000008a
+CSEG bubbleL2     0000006d
+CSEG bubbleL2end  0000007e
+CSEG callSwap     0000007b
+CSEG bubbleSwap   0000008b
+CSEG getDataL1    0000009d
+CSEG getDataR     000000a4
+CSEG USART_Rx     000000bc
+CSEG uint16_Tx    000000aa
+CSEG USART_Tx     000000b5
+CSEG receiveReady 000000b2
+CSEG table        000000c4
+CSEG getDataDebug 00000129
+CSEG getuint16Debug 0000013c
+CSEG debugL1      00000134
+CSEG getDataDebugR 0000013b

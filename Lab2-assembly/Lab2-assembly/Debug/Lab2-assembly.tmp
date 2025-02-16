@@ -22,10 +22,35 @@
   <FILE>Lab2-assembly.lss</FILE>
  </OUTPUT_FILES>
  <LABELS>
-  <USART_Init><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>10</LINE></USART_Init>
-  <start><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>24</LINE></start>
-  <uint16_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>27</LINE></uint16_Rx>
-  <USART_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>42</LINE></USART_Rx>
-  <USART_Tx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>34</LINE></USART_Tx>
+  <USART_Init><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>58</LINE></USART_Init>
+  <start><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>71</LINE></start>
+  <next><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>72</LINE></next>
+  <getTestCount><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>76</LINE></getTestCount>
+  <bSortTestLoop><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>81</LINE></bSortTestLoop>
+  <end><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>74</LINE></end>
+  <uint16_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>182</LINE></uint16_Rx>
+  <bSortTestL1><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>89</LINE></bSortTestL1>
+  <bSortTestR><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>96</LINE></bSortTestR>
+  <bSortTest><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>99</LINE></bSortTest>
+  <getData><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>168</LINE></getData>
+  <bubbleSort><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>104</LINE></bubbleSort>
+  <testComplete><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>193</LINE></testComplete>
+  <bubbleL1><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>131</LINE></bubbleL1>
+  <bubbleR><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>155</LINE></bubbleR>
+  <bubbleL2><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>133</LINE></bubbleL2>
+  <bubbleL2end><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>147</LINE></bubbleL2end>
+  <callSwap><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>145</LINE></callSwap>
+  <bubbleSwap><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>158</LINE></bubbleSwap>
+  <getDataL1><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>175</LINE></getDataL1>
+  <getDataR><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>180</LINE></getDataR>
+  <USART_Rx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>208</LINE></USART_Rx>
+  <uint16_Tx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>188</LINE></uint16_Tx>
+  <USART_Tx><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>201</LINE></USART_Tx>
+  <receiveReady><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>196</LINE></receiveReady>
+  <table><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>214</LINE></table>
+  <getDataDebug><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>215</LINE></getDataDebug>
+  <getuint16Debug><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>231</LINE></getuint16Debug>
+  <debugL1><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>224</LINE></debugL1>
+  <getDataDebugR><FILE>C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm</FILE><LINE>229</LINE></getDataDebugR>
  </LABELS>
 </ASSEMBLER_INFO>
