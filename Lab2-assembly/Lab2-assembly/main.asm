@@ -1,8 +1,8 @@
 ;  
-;  Lab2-assembly.asm
+;  sorting algorithm testing source code
 ;  
 ;  Created: 2/14/2025 12:01:11 AM
-;  Author : malon
+;  Author : Joe Maloney
 ;  
 
             .MACRO    U16_CP                ;  args - rdH,rdL,rrH,rrL compares rdH:rdL to rrH:rdL
@@ -30,7 +30,7 @@
             .EQU      CHAR_MAX=0xFF
             .CSEG    
             .ORG      0x0   
-            CLR       r0    
+            CLR       r0                    ;  clear all registers prior to application start
             CLR       r1    
             CLR       r2    
             CLR       r3    
@@ -63,32 +63,28 @@
             CLR       r30   
             CLR       r31   
 
-USART_Init:
-;  Set baud rate to UBRR0
-            LDI       r16   ,  0x0    
+USART_Init: LDI       r16   ,  0x0          ;  Set baud rate to UBRR0
             STS       UBRR0H,  r16    
             LDI       r16   ,  103          ;  49 for 20K baud, 103 for 9600, 12 for 76800
             STS       UBRR0L,  r16    
-;  Enable receiver and transmitter
-            LDI       r16   ,  (1<<RXEN0)|(1<<TXEN0)
+            LDI       r16   ,  (1<<RXEN0)|(1<<TXEN0) ;  enable reciver/transmitter
             STS       UCSR0B,  r16    
-;  Set frame format: 8data, 1stop bit
-            LDI       r16   ,  (0<<USBS0)|(3<<UCSZ00)
+            LDI       r16   ,  (0<<USBS0)|(3<<UCSZ00) ;  Set frame format: 8data, 1stop bit
             STS       UCSR0C,  r16    
 
 start:      RCALL     next                  ;  reserve first 2 bytes on stack for storing the test count
-next:       RCALL     getTestCount
-            RCALL     testLoop
+next:       RCALL     getTestCount          ;  get the number of tests to be performed from the uart
+            RCALL     testLoop              ;  run the specified number of tests, getting a new dataset from the host PC each time
 end:        JMP       end   
 
-qSortTest:  RCALL     getData ; load new dataset from host PC
+qSortTest:  RCALL     getData               ;  load new dataset from host PC
             LDI       XL    ,  0x00   
             LDI       XH    ,  0x01   
             LD        r2    ,  X+     
             LD        r3    ,  X+           ;  set X pointer to array start address, and r3:r2 to array length for quicksort test
-			rcall sendACK ; start timer on host PC	
+            RCALL     sendACK               ;  start timer on host PC
             RCALL     quickSort
-            RCALL     testComplete ; stop timer on host PC
+            RCALL     testComplete          ;  stop timer on host PC
             RET      
 
 quickSort:  LDI       r16   ,  0x1    
@@ -98,14 +94,14 @@ quickSort:  LDI       r16   ,  0x1
             RCALL     part                  ;  after partitioning, the ending address of the pivot is stored in the Y pointer
             U16_PUSH  YH    ,  YL           ;  store pivot location on stack
             U16_SUB   YH    ,  YL     ,  XH     ,  XL      ;  calculate lower array size in bytes
-            LSR       YH                    ;  This number is gaurenteed to be even
+            LSR       YH                    ;  This number is guaranteed to be even
             ROR       YL                    ;  divide by 2 to get number of elements, ror is lsr w/ carry bit
             U16_SUB   r3    ,  r2     ,  YH     ,  YL      ;  calculate number of elements in upper half, including pivot
             U16_SUB   r3    ,  r2     ,  r17    ,  r16     ;  Y=Y-1, get rid of the pivot
             U16_PUSH  r3    ,  r2           ;  store upper array size on stack
             MOV       r3    ,  YH     
             MOV       r2    ,  YL           ;  move array length into r3:r2 for next call to quicksort
-            RCALL     quickSort             ;  lower half, X is equivalant for this call, r3:r2 holds new length
+            RCALL     quickSort             ;  lower half, X is equivalent for this call, r3:r2 holds new length
             U16_POP   r3    ,  r2           ;  move upper array length into r3:r2 for next call to quicksort
             U16_POP   XH    ,  XL           ;  restore X pointer to previous pivot
             U16_ADD   XH    ,  XL     ,  r17    ,  r16    
@@ -153,6 +149,7 @@ qSwapPivot: LD        r14   ,  Y+
             U16_SUB   XH    ,  XL     ,  r17    ,  r16    
             U16_SUB   XH    ,  XL     ,  r17    ,  r16     ;  send X pointer back to original array start addr, used for calculating upper/lower half length in qsort
             RET      
+
 ;  swaps values at (Y+1) and X, does not change X, Y=(Y+1)
 qSwap:      LD        r15   ,  -X     
             LD        r15   ,  -X           ;  retract X back to the address of the value to be swapped
@@ -174,32 +171,32 @@ qSwap:      LD        r15   ,  -X
             U16_SUB   YH    ,  YL     ,  r17    ,  r16     ;  Y now addresses (Y+1) from the original Y
             RET      
 
-getTestCount: rcall sendACK
-LDI       XL    ,  0xFE   
+getTestCount:RCALL     sendACK
+            LDI       XL    ,  0xFE   
             LDI       XH    ,  0x08         ;  set X to last SRAM location
             RCALL     uint16_Rx             ;  get and store test count in last SRAM location
             RET      
 
-testLoop:LDI       XL    ,  0xFE   
-            LDI       XH    ,  0x08   ;set X pointer to the number of tests to run
+testLoop:   LDI       XL    ,  0xFE   
+            LDI       XH    ,  0x08         ;  set X pointer to the number of tests to run
             CLR       r17   
             LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
-            LD        r24    ,  X+     
-            LD        r25    ,  X            ;  load test count into r25:r24, use for loop stop condition
+            LD        r24   ,  X+     
+            LD        r25   ,  X            ;  load test count into r25:r24, use for loop stop condition
             CLR       r23   
             CLR       r22                   ;  use r23:r22 for loop counter
-testL1:U16_CP    r23   ,  r22    ,  r25     ,  r24     
-            BREQ      testR
-            RCALL     bSortTest; change this call from bSortTest/qSortTest
+testL1:     U16_CP    r23   ,  r22    ,  r25    ,  r24    
+            BREQ      testR 
+            RCALL     bSortTest             ;  change this call from bSortTest/qSortTest
             CLR       r17   
             LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
             U16_ADD   r23   ,  r22    ,  r17    ,  r16     ;  increment loop counter
             JMP       testL1
-testR: RET      
+testR:      RET      
 
 ;  uses X and Y for indirection to data, Z for accumulator
 bSortTest:  RCALL     getData
-rcall sendACK
+            RCALL     sendACK
             RCALL     bubbleSort
             RCALL     testComplete
             RET      
@@ -237,7 +234,7 @@ bubbleL2:   U16_CP    r1    ,  r0     ,  XH     ,  XL
             BREQ      bubbleL2end
 
             MOV       ZL    ,  XL     
-            MOV       ZH    ,  XH           ;  Z reg used for swap, needs to point to orignial location of first uint low byte
+            MOV       ZH    ,  XH           ;  Z reg used for swap, needs to point to original location of first uint low byte
             LD        r2    ,  X+     
             LD        r3    ,  X+           ;  Load first uint16 into r3:r2
             LD        r4    ,  Y+     
@@ -283,7 +280,7 @@ getDataL1:  U16_CP    r1    ,  r0     ,  ZH     ,  ZL
             JMP       getDataL1
 getDataR:   RET      
 
-uint16_Rx:  RCALL     USART_Rx
+uint16_Rx:  RCALL     USART_Rx              ;  receives a single byte from
             ST        X+    ,  r17    
             RCALL     USART_Rx
             ST        X+    ,  r17    
@@ -304,19 +301,20 @@ sendACK:    LDI       r16   ,  0xF0
             RET      
 ;  Wait for empty transmit buffer
 USART_Tx:   LDS       r17   ,  UCSR0A       ;  working: r17, sends byte in r16 , read uart status reg
-            SBRS      r17   ,  UDRE0        ;  infinite loop untill I/0 is empty, checks if data empty bit is set in uart status reg
+            SBRS      r17   ,  UDRE0        ;  infinite loop until I/0 is empty, checks if data empty bit is set in uart status reg
             RJMP      USART_Tx
 ;  Put data (r16) into buffer, sends the data
             STS       UDR0  ,  r16    
             RET      
 
-USART_Rx:   LDS       r17   ,  UCSR0A       ;  reads uart sreg into r17
+USART_Rx:   LDS       r17   ,  UCSR0A       ;  reads uart sreg into r17, blocking the read of the uart data register until data ready
             SBRS      r17   ,  RXC0   
             RJMP      USART_Rx
-            LDS       r17   ,  UDR0   
+            LDS       r17   ,  UDR0         ;  read uart data register into r17
             RET      
+;  table - a non uart dataset used for debugging w/ the simulator
 table:      .DB       0x64  ,  0x0    ,  0xc3   ,  0xca   ,  0x38   ,  0xad   ,  0xbc   ,  0x79   ,  0xfc   ,  0x8e   ,  0x3a   ,  0xbd   ,  0x53   ,  0x83   ,  0x69   ,  0xcb   ,  0x67   ,  0x63   ,  0x55   ,  0xc4   ,  0x09   ,  0xc0   ,  0xc5   ,  0x5a   ,  0xd3   ,  0x01   ,  0xc0   ,  0x40   ,  0x36   ,  0x3f   ,  0x9d   ,  0xea   ,  0xf8   ,  0x9e   ,  0x9c   ,  0xea   ,  0x15   ,  0x51   ,  0x07   ,  0xfe   ,  0x58   ,  0xee   ,  0x66   ,  0xca   ,  0xec   ,  0x9a   ,  0x12   ,  0x3e   ,  0x0d   ,  0xf6   ,  0xa2   ,  0x7b   ,  0xe6   ,  0x0b   ,  0x93   ,  0x2f   ,  0x78   ,  0x24   ,  0x4c   ,  0x9a   ,  0xf7   ,  0x81   ,  0x04   ,  0x90   ,  0x71   ,  0x3e   ,  0xf5   ,  0xa8   ,  0xbd   ,  0xbe   ,  0x09   ,  0x1c   ,  0xfb   ,  0xfd   ,  0xd5   ,  0x4a   ,  0x89   ,  0x24   ,  0xfd   ,  0x27   ,  0x00   ,  0xa1   ,  0x53   ,  0x34   ,  0xd6   ,  0xec   ,  0xd7   ,  0x60   ,  0xfd   ,  0xc1   ,  0x11   ,  0x5d   ,  0x55   ,  0x77   ,  0x0c   ,  0x0d   ,  0xbc   ,  0x51   ,  0xbb   ,  0x78   ,  0x01   ,  0x39   ,  0x35   ,  0xe4   ,  0x5a   ,  0x82   ,  0xae   ,  0xd9   ,  0x92   ,  0x74   ,  0xea   ,  0x5f   ,  0x92   ,  0x2d   ,  0x5a   ,  0x96   ,  0xd1   ,  0xbb   ,  0xc6   ,  0x4b   ,  0x41   ,  0x2e   ,  0xba   ,  0xb6   ,  0xfc   ,  0x21   ,  0x85   ,  0xf8   ,  0xa1   ,  0x6a   ,  0xee   ,  0x5f   ,  0x6b   ,  0xdb   ,  0x2a   ,  0x75   ,  0x33   ,  0x71   ,  0x6d   ,  0xe2   ,  0x82   ,  0xf4   ,  0xee   ,  0x97   ,  0x09   ,  0x51   ,  0xd7   ,  0x57   ,  0x0e   ,  0xfe   ,  0x75   ,  0xd6   ,  0xb6   ,  0xaf   ,  0xda   ,  0x13   ,  0xba   ,  0x4d   ,  0x00   ,  0x27   ,  0xeb   ,  0xe9   ,  0x7d   ,  0x7b   ,  0x31   ,  0x5b   ,  0x11   ,  0x3d   ,  0xf2   ,  0x8c   ,  0x2e   ,  0xef   ,  0x37   ,  0x8a   ,  0xc7   ,  0xf7   ,  0x25   ,  0xf4   ,  0xd3   ,  0xee   ,  0x82   ,  0x64   ,  0x8f   ,  0xb0   ,  0x3d   ,  0xd6   ,  0x85   ,  0x22   ,  0x9e   ,  0x3e   ,  0x67   ,  0x2b   ,  0x36   ,  0x9a   ,  0xd0   ,  0x88   ,  0x9e   ,  0xbf   ,  0x81   ,  0x78   ,  0x43   ,  0x3b   
-getDataDebug:LDI       XL    ,  0x0    
+getDataDebug:LDI       XL    ,  0x0         ;  same as getData, but reads from program flash instead of receiving data via uart
             LDI       XH    ,  0x1    
             LDI       ZL    ,  low(table*2)
             LDI       ZH    ,  high(table*2) ;  set Z to starting address of table
@@ -332,7 +330,7 @@ debugL1:    U16_CP    r1    ,  r0     ,  YH     ,  YL
             JMP       debugL1
 getDataDebugR:RET      
 
-getuint16Debug:LPM       r16   ,  Z+     
+getuint16Debug:LPM       r16   ,  Z+        ;  same as getuint16, but loads uint16 from program memory for debugging
             ST        X+    ,  r16          ;  store n low byte
             LPM       r16   ,  Z+     
             ST        X+    ,  r16          ;  store n high byte
