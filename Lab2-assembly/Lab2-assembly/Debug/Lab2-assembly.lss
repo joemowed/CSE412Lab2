@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm Sun Feb 16 12:56:42 2025
+AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2025\Lab2-assembly\Lab2-assembly\main.asm Mon Feb 17 14:18:55 2025
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328PBdef.inc'
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328PBdef.inc'
@@ -1565,6 +1565,14 @@ AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2
                                              SUB       @1    ,  @3     
                                              SBC       @0    ,  @2     
                                              .ENDMACRO
+                                             .MACRO    U16_PUSH              ;  args - rrH,rrL pushes uint onto stack
+                                             PUSH      @1    
+                                             PUSH      @0    
+                                             .ENDMACRO
+                                             .MACRO    U16_POP               ;  args - rrH,rrL pops uint from the stack
+                                             POP       @0    
+                                             POP       @1    
+                                             .ENDMACRO
                                  ;  Replace with your application code
                                              .LISTMAC 
                                              .EQU      CHAR_MAX=0xFF
@@ -1617,302 +1625,479 @@ AVRASM ver. 2.2.8  C:\Users\malon\OneDrive\Documents\Spring 2025\ECE 412\Lab 2 2
 00002a 9300 00c2                             STS       UCSR0C,  r16    
                                  
 00002c d000                      start:      RCALL     next                  ;  reserve first 2 bytes on stack for storing the test count
-00002d d003                      next:       RCALL     getTestCount
-00002e d006                                  RCALL     bSortTestLoop
+00002d d076                      next:       RCALL     getTestCount
+00002e d07a                                  RCALL     testLoop
 00002f 940c 002f                 end:        JMP       end   
                                  
-000031 efae                      getTestCount:LDI       XL    ,  0xFE   
-000032 e0b8                                  LDI       XH    ,  0x08         ;  set X to last SRAM location
-000033 d071                                  RCALL     uint16_Rx             ;  get and store test count in last SRAM location
-000034 9508                                  RET      
+000031 d0d7                      qSortTest:  RCALL     getData ; load new dataset from host PC
+000032 e0a0                                  LDI       XL    ,  0x00   
+000033 e0b1                                  LDI       XH    ,  0x01   
+000034 902d                                  LD        r2    ,  X+     
+000035 903d                                  LD        r3    ,  X+           ;  set X pointer to array start address, and r3:r2 to array length for quicksort test
+000036 d0f1                      			rcall sendACK ; start timer on host PC	
+000037 d002                                  RCALL     quickSort
+000038 d0ec                                  RCALL     testComplete ; stop timer on host PC
+000039 9508                                  RET      
                                  
-000035 efae                      bSortTestLoop:LDI       XL    ,  0xFE   
-000036 e0b8                                  LDI       XH    ,  0x08   
-000037 2711                                  CLR       r17   
-000038 e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
-000039 908d                                  LD        r8    ,  X+     
-00003a 909c                                  LD        r9    ,  X            ;  load test count into r9:r8, use for loop stop condition
-00003b 24aa                                  CLR       r10   
-00003c 24bb                                  CLR       r11                   ;  use r11:r10 for loop counter
+00003a e001                      quickSort:  LDI       r16   ,  0x1    
+00003b 2711                                  CLR       r17                   ;  use r17:r16 for a constant uint 0x0001
                                 +
-00003d 14a8                     +CP r10 , r8
-00003e 04b9                     +CPC r11 , r9
-                                 bSortTestL1:U16_CP    r11   ,  r10    ,  r9     ,  r8     
-00003f f039                                  BREQ      bSortTestR
-000040 d007                                  RCALL     bSortTest
-000041 2711                                  CLR       r17   
-000042 e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
+00003c 1502                     +CP r16 , r2
+00003d 0513                     +CPC r17 , r3
+                                             U16_CP    r17   ,  r16    ,  r3     ,  r2      ;  base case - break if length is 1 or 0
+00003e f4cc                                  BRGE      qSortR
+00003f d019                                  RCALL     part                  ;  after partitioning, the ending address of the pivot is stored in the Y pointer
                                 +
-000043 0ea0                     +ADD r10 , r16
-000044 1eb1                     +ADC r11 , r17
-                                             U16_ADD   r11   ,  r10    ,  r17    ,  r16     ;  increment loop counter
-000045 940c 003d                             JMP       bSortTestL1
-000047 9508                      bSortTestR: RET      
+000040 93cf                     +PUSH YL
+000041 93df                     +PUSH YH
+                                             U16_PUSH  YH    ,  YL           ;  store pivot location on stack
+                                +
+000042 1bca                     +SUB YL , XL
+000043 0bdb                     +SBC YH , XH
+                                             U16_SUB   YH    ,  YL     ,  XH     ,  XL      ;  calculate lower array size in bytes
+000044 95d6                                  LSR       YH                    ;  This number is gaurenteed to be even
+000045 95c7                                  ROR       YL                    ;  divide by 2 to get number of elements, ror is lsr w/ carry bit
+                                +
+000046 1a2c                     +SUB r2 , YL
+000047 0a3d                     +SBC r3 , YH
+                                             U16_SUB   r3    ,  r2     ,  YH     ,  YL      ;  calculate number of elements in upper half, including pivot
+                                +
+000048 1a20                     +SUB r2 , r16
+000049 0a31                     +SBC r3 , r17
+                                             U16_SUB   r3    ,  r2     ,  r17    ,  r16     ;  Y=Y-1, get rid of the pivot
+                                +
+00004a 922f                     +PUSH r2
+00004b 923f                     +PUSH r3
+                                             U16_PUSH  r3    ,  r2           ;  store upper array size on stack
+00004c 2e3d                                  MOV       r3    ,  YH     
+00004d 2e2c                                  MOV       r2    ,  YL           ;  move array length into r3:r2 for next call to quicksort
+00004e dfeb                                  RCALL     quickSort             ;  lower half, X is equivalant for this call, r3:r2 holds new length
+                                +
+00004f 903f                     +POP r3
+000050 902f                     +POP r2
+                                             U16_POP   r3    ,  r2           ;  move upper array length into r3:r2 for next call to quicksort
+                                +
+000051 91bf                     +POP XH
+000052 91af                     +POP XL
+                                             U16_POP   XH    ,  XL           ;  restore X pointer to previous pivot
+                                +
+000053 0fa0                     +ADD XL , r16
+000054 1fb1                     +ADC XH , r17
+                                             U16_ADD   XH    ,  XL     ,  r17    ,  r16    
+                                +
+000055 0fa0                     +ADD XL , r16
+000056 1fb1                     +ADC XH , r17
+                                             U16_ADD   XH    ,  XL     ,  r17    ,  r16     ;  move Y to element after previous pivot (lower byte of first element in upper half array)
+000057 dfe2                                  RCALL     quickSort             ;  Upper half, X is at the element after previous pivot, r3:r2 holds upper half length
+                                 
+000058 9508                      qSortR:     RET      
+                                 
+                                 ;  Array start address is X (array start and pivot are the same element), array length stored at r3:r2
+000059 2e0a                      part:       MOV       r0    ,  XL     
+00005a 2e1b                                  MOV       r1    ,  XH           ;  write down pivot address in r1:r0
+00005b 2fca                                  MOV       YL    ,  XL     
+00005c 2fdb                                  MOV       YH    ,  XH           ;  set y pointer to first (non-pivot) value in array
+00005d 904d                                  LD        r4    ,  X+     
+00005e 905d                                  LD        r5    ,  X+           ;  load the pivot into r5:r4
+00005f 2711                                  CLR       r17   
+000060 e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
+000061 2477                                  CLR       r7    
+000062 2e60                                  MOV       r6    ,  r16          ;  use r7:r6 for loop counter, start at 1
+                                +
+000063 1462                     +CP r6 , r2
+000064 0473                     +CPC r7 , r3
+                                 partL1:     U16_CP    r7    ,  r6     ,  r3     ,  r2      ;  stop loop when counter == r3:r2 (array length)
+000065 f061                                  BREQ      partR 
+000066 90cd                                  LD        r12   ,  X+     
+000067 90dd                                  LD        r13   ,  X+           ;  load the current value into r13:r12
+                                +
+000068 14c4                     +CP r12 , r4
+000069 04d5                     +CPC r13 , r5
+                                             U16_CP    r13   ,  r12    ,  r5     ,  r4      ;  compare value to pivot
+00006a f010                                  BRLO      partL2
+00006b 940c 006e                             JMP       partL3                ;  don't swap if value>pivot
+00006d d01b                      partL2:     RCALL     qSwap                 ;  swap the pivot and value if value is less than pivot
+                                +
+00006e 0e60                     +ADD r6 , r16
+00006f 1e71                     +ADC r7 , r17
+                                 partL3:     U16_ADD   r7    ,  r6     ,  r17    ,  r16     ;  increment loop counter
+000070 940c 0063                             JMP       partL1
+000072 d001                      partR:      RCALL     qSwapPivot            ;  swap *Y and pivot
+000073 9508                                  RET      
+                                 
+000074 90e9                      qSwapPivot: LD        r14   ,  Y+     
+000075 90f9                                  LD        r15   ,  Y+           ;  store value to be swapped in r15:r14
+                                +
+000076 1bc0                     +SUB YL , r16
+000077 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16    
+                                +
+000078 1bc0                     +SUB YL , r16
+000079 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16     ;  send Y pointer back to address of value to be swapped
+00007a 2da0                                  MOV       XL    ,  r0     
+00007b 2db1                                  MOV       XH    ,  r1           ;  restore X to pivot location
+00007c 92ed                                  ST        X+    ,  r14    
+00007d 92fd                                  ST        X+    ,  r15          ;  store *Y at original pivot location
+00007e 9249                                  ST        Y+    ,  r4     
+00007f 9259                                  ST        Y+    ,  r5           ;  store pivot at address of Y
+                                +
+000080 1bc0                     +SUB YL , r16
+000081 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16    
+                                +
+000082 1bc0                     +SUB YL , r16
+000083 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16     ;  send Y pointer back to address of value to be swapped
+                                +
+000084 1ba0                     +SUB XL , r16
+000085 0bb1                     +SBC XH , r17
+                                             U16_SUB   XH    ,  XL     ,  r17    ,  r16    
+                                +
+000086 1ba0                     +SUB XL , r16
+000087 0bb1                     +SBC XH , r17
+                                             U16_SUB   XH    ,  XL     ,  r17    ,  r16     ;  send X pointer back to original array start addr, used for calculating upper/lower half length in qsort
+000088 9508                                  RET      
+                                 ;  swaps values at (Y+1) and X, does not change X, Y=(Y+1)
+000089 90fe                      qSwap:      LD        r15   ,  -X     
+00008a 90fe                                  LD        r15   ,  -X           ;  retract X back to the address of the value to be swapped
+                                +
+00008b 0fc0                     +ADD YL , r16
+00008c 1fd1                     +ADC YH , r17
+                                             U16_ADD   YH    ,  YL     ,  r17    ,  r16    
+                                +
+00008d 0fc0                     +ADD YL , r16
+00008e 1fd1                     +ADC YH , r17
+                                             U16_ADD   YH    ,  YL     ,  r17    ,  r16     ;  increment Y pointer
+00008f 90e9                                  LD        r14   ,  Y+     
+000090 90f9                                  LD        r15   ,  Y+           ;  load value to be swapped from Y pointer into r15:r14
+                                +
+000091 1bc0                     +SUB YL , r16
+000092 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16    
+                                +
+000093 1bc0                     +SUB YL , r16
+000094 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16     ;  send Y pointer back to address of value to be swapped
+000095 912d                                  LD        r18   ,  X+     
+000096 913d                                  LD        r19   ,  X+           ;  load other value to be swapped into r19:r18
+                                +
+000097 1ba0                     +SUB XL , r16
+000098 0bb1                     +SBC XH , r17
+                                             U16_SUB   XH    ,  XL     ,  r17    ,  r16    
+                                +
+000099 1ba0                     +SUB XL , r16
+00009a 0bb1                     +SBC XH , r17
+                                             U16_SUB   XH    ,  XL     ,  r17    ,  r16     ;  decrement X pointer to original location
+00009b 92ed                                  ST        X+    ,  r14    
+00009c 92fd                                  ST        X+    ,  r15          ;  store the *(Y+1) value at the original location of X
+00009d 9329                                  ST        Y+    ,  r18    
+00009e 9339                                  ST        Y+    ,  r19          ;  store the *X value at (Y+1)
+                                +
+00009f 1bc0                     +SUB YL , r16
+0000a0 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16    
+                                +
+0000a1 1bc0                     +SUB YL , r16
+0000a2 0bd1                     +SBC YH , r17
+                                             U16_SUB   YH    ,  YL     ,  r17    ,  r16     ;  Y now addresses (Y+1) from the original Y
+0000a3 9508                                  RET      
+                                 
+0000a4 d083                      getTestCount: rcall sendACK
+0000a5 efae                      LDI       XL    ,  0xFE   
+0000a6 e0b8                                  LDI       XH    ,  0x08         ;  set X to last SRAM location
+0000a7 d073                                  RCALL     uint16_Rx             ;  get and store test count in last SRAM location
+0000a8 9508                                  RET      
+                                 
+0000a9 efae                      testLoop:LDI       XL    ,  0xFE   
+0000aa e0b8                                  LDI       XH    ,  0x08   ;set X pointer to the number of tests to run
+0000ab 2711                                  CLR       r17   
+0000ac e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
+0000ad 918d                                  LD        r24    ,  X+     
+0000ae 919c                                  LD        r25    ,  X            ;  load test count into r25:r24, use for loop stop condition
+0000af 2777                                  CLR       r23   
+0000b0 2766                                  CLR       r22                   ;  use r23:r22 for loop counter
+                                +
+0000b1 1768                     +CP r22 , r24
+0000b2 0779                     +CPC r23 , r25
+                                 testL1:U16_CP    r23   ,  r22    ,  r25     ,  r24     
+0000b3 f039                                  BREQ      testR
+0000b4 d007                                  RCALL     bSortTest; change this call from bSortTest/qSortTest
+0000b5 2711                                  CLR       r17   
+0000b6 e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to increment loop counter
+                                +
+0000b7 0f60                     +ADD r22 , r16
+0000b8 1f71                     +ADC r23 , r17
+                                             U16_ADD   r23   ,  r22    ,  r17    ,  r16     ;  increment loop counter
+0000b9 940c 00b1                             JMP       testL1
+0000bb 9508                      testR: RET      
                                  
                                  ;  uses X and Y for indirection to data, Z for accumulator
-000048 d04b                      bSortTest:  RCALL     getData
-000049 d002                                  RCALL     bubbleSort
-00004a d064                                  RCALL     testComplete
-00004b 9508                                  RET      
+0000bc d04c                      bSortTest:  RCALL     getData
+0000bd d06a                      rcall sendACK
+0000be d002                                  RCALL     bubbleSort
+0000bf d065                                  RCALL     testComplete
+0000c0 9508                                  RET      
                                  
-00004c e0a0                      bubbleSort: LDI       XL    ,  0x0          ;  set X to location of n
-00004d e0b1                                  LDI       XH    ,  0x1    
-00004e e0c4                                  LDI       YL    ,  0x4    
-00004f e0d1                                  LDI       YH    ,  0x1          ;  set Y to second data location
-000050 27ee                                  CLR       ZL    
-000051 27ff                                  CLR       ZH                    ;  set Z to 0
-000052 900d                                  LD        r0    ,  X+     
-000053 901d                                  LD        r1    ,  X+           ;  store the number of numbers (n) in r1:r0,X now points at low byte of first uint16
-000054 2d20                                  MOV       r18   ,  r0     
-000055 2d31                                  MOV       r19   ,  r1           ;  use r19:r18 for outer loop end condition check
-000056 902e                                  LD        r2    ,  -X     
-000057 902e                                  LD        r2    ,  -X           ;  decrement X to addr of last data uint low byte
+0000c1 e0a0                      bubbleSort: LDI       XL    ,  0x0          ;  set X to location of n
+0000c2 e0b1                                  LDI       XH    ,  0x1    
+0000c3 e0c4                                  LDI       YL    ,  0x4    
+0000c4 e0d1                                  LDI       YH    ,  0x1          ;  set Y to second data location
+0000c5 27ee                                  CLR       ZL    
+0000c6 27ff                                  CLR       ZH                    ;  set Z to 0
+0000c7 900d                                  LD        r0    ,  X+     
+0000c8 901d                                  LD        r1    ,  X+           ;  store the number of numbers (n) in r1:r0,X now points at low byte of first uint16
+0000c9 2d20                                  MOV       r18   ,  r0     
+0000ca 2d31                                  MOV       r19   ,  r1           ;  use r19:r18 for outer loop end condition check
+0000cb 902e                                  LD        r2    ,  -X     
+0000cc 902e                                  LD        r2    ,  -X           ;  decrement X to addr of last data uint low byte
                                 +
-000058 0da0                     +ADD XL , r0
-000059 1db1                     +ADC XH , r1
+0000cd 0da0                     +ADD XL , r0
+0000ce 1db1                     +ADC XH , r1
                                              U16_ADD   XH    ,  XL     ,  r1     ,  r0      ;  add n to X address, doing this twice because uint16 is 2 bytes large
                                 +
-00005a 0da0                     +ADD XL , r0
-00005b 1db1                     +ADC XH , r1
+0000cf 0da0                     +ADD XL , r0
+0000d0 1db1                     +ADC XH , r1
                                              U16_ADD   XH    ,  XL     ,  r1     ,  r0      ;  add n to X address, this makes X point to the low byte of 1 of the last uint16
-00005c 2e0a                                  MOV       r0    ,  XL     
-00005d 2e1b                                  MOV       r1    ,  XH           ;  load the end of data address into r1:r0, this is stop condition for the loops
-00005e e0a2                                  LDI       XL    ,  0x2    
-00005f e0b1                                  LDI       XH    ,  0x1          ;  X points to first data uint16 low byte
-000060 2422                                  CLR       r2    
-000061 2433                                  CLR       r3    
-000062 2444                                  CLR       r4    
-000063 2455                                  CLR       r5    
-000064 2711                                  CLR       r17   
-000065 e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to decrement the loop stop condition
+0000d1 2e0a                                  MOV       r0    ,  XL     
+0000d2 2e1b                                  MOV       r1    ,  XH           ;  load the end of data address into r1:r0, this is stop condition for the loops
+0000d3 e0a2                                  LDI       XL    ,  0x2    
+0000d4 e0b1                                  LDI       XH    ,  0x1          ;  X points to first data uint16 low byte
+0000d5 2422                                  CLR       r2    
+0000d6 2433                                  CLR       r3    
+0000d7 2444                                  CLR       r4    
+0000d8 2455                                  CLR       r5    
+0000d9 2711                                  CLR       r17   
+0000da e001                                  LDI       r16   ,  0x1          ;  use r17:r16 to decrement the loop stop condition
                                 +
-000066 1b20                     +SUB r18 , r16
-000067 0b31                     +SBC r19 , r17
+0000db 1b20                     +SUB r18 , r16
+0000dc 0b31                     +SBC r19 , r17
                                              U16_SUB   r19   ,  r18    ,  r17    ,  r16     ;  outer loop runs (n-1) times
-000068 2466                                  CLR       r6    
-000069 2477                                  CLR       r7                    ;  use r7:r6 for outer loop iterator
+0000dd 2466                                  CLR       r6    
+0000de 2477                                  CLR       r7                    ;  use r7:r6 for outer loop iterator
                                 +
-00006a 1662                     +CP r6 , r18
-00006b 0673                     +CPC r7 , r19
+0000df 1662                     +CP r6 , r18
+0000e0 0673                     +CPC r7 , r19
                                  bubbleL1:   U16_CP    r7    ,  r6     ,  r19    ,  r18     ;  outer loop r7:r6 is iterator, starts at 0, r19:r18 is stop condition, breaks at i = (n-1)
-00006c f0e9                                  BREQ      bubbleR               ;  stop sorting
+0000e1 f0e9                                  BREQ      bubbleR               ;  stop sorting
                                 +
-00006d 160a                     +CP r0 , XL
-00006e 061b                     +CPC r1 , XH
+0000e2 160a                     +CP r0 , XL
+0000e3 061b                     +CPC r1 , XH
                                  bubbleL2:   U16_CP    r1    ,  r0     ,  XH     ,  XL     
-00006f f071                                  BREQ      bubbleL2end
+0000e4 f071                                  BREQ      bubbleL2end
                                  
-000070 2fea                                  MOV       ZL    ,  XL     
-000071 2ffb                                  MOV       ZH    ,  XH           ;  Z reg used for swap, needs to point to orignial location of first uint low byte
-000072 902d                                  LD        r2    ,  X+     
-000073 903d                                  LD        r3    ,  X+           ;  Load first uint16 into r3:r2
-000074 9049                                  LD        r4    ,  Y+     
-000075 9059                                  LD        r5    ,  Y+           ;  Load second uint16 into r5:r4
+0000e5 2fea                                  MOV       ZL    ,  XL     
+0000e6 2ffb                                  MOV       ZH    ,  XH           ;  Z reg used for swap, needs to point to orignial location of first uint low byte
+0000e7 902d                                  LD        r2    ,  X+     
+0000e8 903d                                  LD        r3    ,  X+           ;  Load first uint16 into r3:r2
+0000e9 9049                                  LD        r4    ,  Y+     
+0000ea 9059                                  LD        r5    ,  Y+           ;  Load second uint16 into r5:r4
                                 +
-000076 1424                     +CP r2 , r4
-000077 0435                     +CPC r3 , r5
+0000eb 1424                     +CP r2 , r4
+0000ec 0435                     +CPC r3 , r5
                                              U16_CP    r3    ,  r2     ,  r5     ,  r4      ;  compare the numbers
-000078 f410                                  BRSH      callSwap              ;  swap if *X >= *Y, brsh is breq for unsigned numbers
-000079 940c 006d                             JMP       bubbleL2
-00007b d00f                      callSwap:   RCALL     bubbleSwap            ;  swap the numbers if number at X >= number at Y
-00007c 940c 006d                             JMP       bubbleL2
-00007e e0a2                      bubbleL2end:LDI       XL    ,  0x2    
-00007f e0b1                                  LDI       XH    ,  0x1          ;  reset the X pointer to first uint low byte
-000080 e0d1                                  LDI       YH    ,  0x1    
-000081 e0c4                                  LDI       YL    ,  0x4          ;  reset the Y pointer to first uint low byte
+0000ed f410                                  BRSH      callSwap              ;  swap if *X >= *Y, brsh is breq for unsigned numbers
+0000ee 940c 00e2                             JMP       bubbleL2
+0000f0 d00f                      callSwap:   RCALL     bubbleSwap            ;  swap the numbers if number at X >= number at Y
+0000f1 940c 00e2                             JMP       bubbleL2
+0000f3 e0a2                      bubbleL2end:LDI       XL    ,  0x2    
+0000f4 e0b1                                  LDI       XH    ,  0x1          ;  reset the X pointer to first uint low byte
+0000f5 e0d1                                  LDI       YH    ,  0x1    
+0000f6 e0c4                                  LDI       YL    ,  0x4          ;  reset the Y pointer to first uint low byte
                                 +
-000082 0e60                     +ADD r6 , r16
-000083 1e71                     +ADC r7 , r17
+0000f7 0e60                     +ADD r6 , r16
+0000f8 1e71                     +ADC r7 , r17
                                              U16_ADD   r7    ,  r6     ,  r17    ,  r16     ;  increment loop counter
                                 +
-000084 1a00                     +SUB r0 , r16
-000085 0a11                     +SBC r1 , r17
+0000f9 1a00                     +SUB r0 , r16
+0000fa 0a11                     +SBC r1 , r17
                                              U16_SUB   r1    ,  r0     ,  r17    ,  r16    
                                 +
-000086 1a00                     +SUB r0 , r16
-000087 0a11                     +SBC r1 , r17
+0000fb 1a00                     +SUB r0 , r16
+0000fc 0a11                     +SBC r1 , r17
                                              U16_SUB   r1    ,  r0     ,  r17    ,  r16     ;  decrement the inner loop stop condition address by 2 bytes, skip the last element that was sorted in the next iteration
-000088 940c 006a                             JMP       bubbleL1
-00008a 9508                      bubbleR:    RET      
+0000fd 940c 00df                             JMP       bubbleL1
+0000ff 9508                      bubbleR:    RET      
                                  
                                  ;  working regs r21:r20, swaps uint16, assumes *Z is low byte of first uint,r3:r2 is first uint,r5:r4 is second uint
-00008b 2d42                      bubbleSwap: MOV       r20   ,  r2     
-00008c 2d53                                  MOV       r21   ,  r3           ;  store first uint in r17:r16
-00008d 2c35                                  MOV       r3    ,  r5     
-00008e 2c24                                  MOV       r2    ,  r4           ;  write second uint into first uint's registers
-00008f 9221                                  ST        Z+    ,  r2     
-000090 9231                                  ST        Z+    ,  r3           ;  write second uint into first's sram location
-000091 9341                                  ST        Z+    ,  r20    
-000092 9351                                  ST        Z+    ,  r21          ;  write first uint into second's sram location
-000093 9508                                  RET      
+000100 2d42                      bubbleSwap: MOV       r20   ,  r2     
+000101 2d53                                  MOV       r21   ,  r3           ;  store first uint in r17:r16
+000102 2c35                                  MOV       r3    ,  r5     
+000103 2c24                                  MOV       r2    ,  r4           ;  write second uint into first uint's registers
+000104 9221                                  ST        Z+    ,  r2     
+000105 9231                                  ST        Z+    ,  r3           ;  write second uint into first's sram location
+000106 9341                                  ST        Z+    ,  r20    
+000107 9351                                  ST        Z+    ,  r21          ;  write first uint into second's sram location
+000108 9508                                  RET      
                                  
-000094 e0a0                      getData:    LDI       r26   ,  0x00         ;  set X to start of sram
-000095 e0b1                                  LDI       r27   ,  0x1    
-000096 d00e                                  RCALL     uint16_Rx             ;  get first uint16 at 0x100, this is the number of numbers (n) in the dataset
-000097 9000 0100                             LDS       r0    ,  0x100  
-000099 9010 0101                             LDS       r1    ,  0x101        ;  load n into r0,r1.
-00009b 27ee                                  CLR       ZL    
-00009c 27ff                                  CLR       ZH                    ;  use Z for accumulator, and r1:r0 for compare
+000109 e0a0                      getData:    LDI       r26   ,  0x00         ;  set X to start of sram
+00010a e0b1                                  LDI       r27   ,  0x1    
+00010b d01c                                  RCALL     sendACK
+00010c d00e                                  RCALL     uint16_Rx             ;  get first uint16 at 0x100, this is the number of numbers (n) in the dataset
+00010d 9000 0100                             LDS       r0    ,  0x100  
+00010f 9010 0101                             LDS       r1    ,  0x101        ;  load n into r0,r1.
+000111 27ee                                  CLR       ZL    
+000112 27ff                                  CLR       ZH                    ;  use Z for accumulator, and r1:r0 for compare
                                 +
-00009d 160e                     +CP r0 , ZL
-00009e 061f                     +CPC r1 , ZH
+000113 160e                     +CP r0 , ZL
+000114 061f                     +CPC r1 , ZH
                                  getDataL1:  U16_CP    r1    ,  r0     ,  ZH     ,  ZL     
-00009f f021                                  BREQ      getDataR
-0000a0 d004                                  RCALL     uint16_Rx             ;  get the next dataset number
-0000a1 9631                                  ADIW      ZL    ,  1      
-0000a2 940c 009d                             JMP       getDataL1
-0000a4 9508                      getDataR:   RET      
+000115 f021                                  BREQ      getDataR
+000116 d004                                  RCALL     uint16_Rx             ;  get the next dataset number
+000117 9631                                  ADIW      ZL    ,  1      
+000118 940c 0113                             JMP       getDataL1
+00011a 9508                      getDataR:   RET      
                                  
-0000a5 d016                      uint16_Rx:  RCALL     USART_Rx
-0000a6 931d                                  ST        X+    ,  r17    
-0000a7 d014                                  RCALL     USART_Rx
-0000a8 931d                                  ST        X+    ,  r17    
-0000a9 9508                                  RET      
+00011b d016                      uint16_Rx:  RCALL     USART_Rx
+00011c 931d                                  ST        X+    ,  r17    
+00011d d014                                  RCALL     USART_Rx
+00011e 931d                                  ST        X+    ,  r17    
+00011f 9508                                  RET      
                                  
-0000aa 910d                      uint16_Tx:  LD        r16   ,  X+     
-0000ab d009                                  RCALL     USART_Tx
-0000ac 910d                                  LD        r16   ,  X+     
-0000ad d007                                  RCALL     USART_Tx
-0000ae 9508                                  RET      
-0000af ef0f                      testComplete:LDI       r16   ,  0xFF   
-0000b0 d004                                  RCALL     USART_Tx
-0000b1 9508                                  RET      
-0000b2 ef00                      receiveReady:LDI       r16   ,  0xF0        ;  sends a 0xF0 to the testing PC to ack that mcu ready for next uint16
-0000b3 d001                                  RCALL     USART_Tx
-0000b4 9508                                  RET      
+000120 910d                      uint16_Tx:  LD        r16   ,  X+     
+000121 d009                                  RCALL     USART_Tx
+000122 910d                                  LD        r16   ,  X+     
+000123 d007                                  RCALL     USART_Tx
+000124 9508                                  RET      
                                  
+000125 ef0f                      testComplete:LDI       r16   ,  0xFF   
+000126 d004                                  RCALL     USART_Tx
+000127 9508                                  RET      
+                                 
+000128 ef00                      sendACK:    LDI       r16   ,  0xF0   
+000129 d001                                  RCALL     USART_Tx
+00012a 9508                                  RET      
                                  ;  Wait for empty transmit buffer
-0000b5 9110 00c0                 USART_Tx:   LDS       r17   ,  UCSR0A       ;  working: r17, sends byte in r16 , read uart status reg
-0000b7 ff15                                  SBRS      r17   ,  UDRE0        ;  infinite loop untill I/0 is empty, checks if data empty bit is set in uart status reg
-0000b8 cffc                                  RJMP      USART_Tx
+00012b 9110 00c0                 USART_Tx:   LDS       r17   ,  UCSR0A       ;  working: r17, sends byte in r16 , read uart status reg
+00012d ff15                                  SBRS      r17   ,  UDRE0        ;  infinite loop untill I/0 is empty, checks if data empty bit is set in uart status reg
+00012e cffc                                  RJMP      USART_Tx
                                  ;  Put data (r16) into buffer, sends the data
-0000b9 9300 00c6                             STS       UDR0  ,  r16    
-0000bb 9508                                  RET      
+00012f 9300 00c6                             STS       UDR0  ,  r16    
+000131 9508                                  RET      
                                  
-0000bc dff5                      USART_Rx:   RCALL     receiveReady
-0000bd 9110 00c0                             LDS       r17   ,  UCSR0A       ;  reads uart into r17
-0000bf ff17                                  SBRS      r17   ,  RXC0   
-0000c0 cffb                                  RJMP      USART_Rx
-0000c1 9110 00c6                             LDS       r17   ,  UDR0   
-0000c3 9508                                  RET      
-0000c4 0064
-0000c5 186f
-0000c6 c636
-0000c7 a77f
-0000c8 8df6
-0000c9 b70c
-0000ca 70b9
-0000cb 75eb
-0000cc 3482
-0000cd af2d
-0000ce e643
-0000cf 1c86
-0000d0 ccb2
-0000d1 93df
-0000d2 1914
-0000d3 f2fb
-0000d4 c827
-0000d5 b7a2
-0000d6 ae80
-0000d7 d907
-0000d8 bbb7
-0000d9 626d
-0000da fc3b
-0000db 0d07
-0000dc 33c3
-0000dd 22c6
-0000de 5d34
-0000df 7219
-0000e0 c88f
-0000e1 16dd
-0000e2 90b7
-0000e3 c193
-0000e4 eb53
-0000e5 5db3
-0000e6 23ee
-0000e7 bf91
-0000e8 73aa
-0000e9 8f4d
-0000ea 497a
-0000eb 738d
-0000ec 84f7
-0000ed c7cd
-0000ee e7a9
-0000ef ba6a
-0000f0 f62c
-0000f1 5f56
-0000f2 7bfb
-0000f3 165e
-0000f4 78dd
-0000f5 e5bd
-0000f6 abea
-0000f7 bc58
-0000f8 0f2d
-0000f9 07f0
-0000fa 590e
-0000fb 8793
-0000fc 7a12
-0000fd f112
-0000fe 90d8
-0000ff 943d
-000100 af0a
-000101 d499
-000102 740f
-000103 3145
-000104 6c55
-000105 b03c
-000106 def2
-000107 cbe3
-000108 ed32
-000109 a7a4
-00010a 82aa
-00010b c30b
-00010c dc6b
-00010d 2150
-00010e 90d6
-00010f 8f75
-000110 c276
-000111 32dc
-000112 19f1
-000113 a578
-000114 d5c2
-000115 9303
-000116 b396
-000117 1098
-000118 61e1
-000119 45c7
-00011a 11a2
-00011b 41e9
-00011c 617d
-00011d 7364
-00011e 8563
-00011f 1623
-000120 99cb
-000121 0976
-000122 b9ab
-000123 8420
-000124 7fee
-000125 b343
-000126 a4fc
-000127 8408
-000128 f464                      table:      .DB       0x64  ,  0x0    ,  0x6f   ,  0x18   ,  0x36   ,  0xc6   ,  0x7f   ,  0xa7   ,  0xf6   ,  0x8d   ,  0x0c   ,  0xb7   ,  0xb9   ,  0x70   ,  0xeb   ,  0x75   ,  0x82   ,  0x34   ,  0x2d   ,  0xaf   ,  0x43   ,  0xe6   ,  0x86   ,  0x1c000129 e0a0                         ,  0xb2   ,  0xcc   ,  0xdf   ,  0x93   ,  0x14   ,  0x19   ,  0xfb   ,  0xf2   ,  0x27   ,  0xc8   ,  0xa2   ,  0xb7   ,  0x80   ,  0xae   ,  0x07   ,  0xd9   ,  0xb7   ,  0xbb   ,  0x6d   ,  0x62   ,  0x3b   ,  0xfc   ,  0x07   ,  0x0d   ,  0xc3   , 00012a e0b1                       0x33   ,  0xc6   ,  0x22   ,  0x34   ,  0x5d   ,  0x19   ,  0x72   ,  0x8f   ,  0xc8   ,  0xdd   ,  0x16   ,  0xb7   ,  0x90   ,  0x93   ,  0xc1   ,  0x53   ,  0xeb   ,  0xb3   ,  0x5d   ,  0xee   ,  0x23   ,  0x91   ,  0xbf   ,  0xaa   ,  0x73   ,  0x4d00012b e8e8                         ,  0x8f   ,  0x7a   ,  0x49   ,  0x8d   ,  0x73   ,  0xf7   ,  0x84   ,  0xcd   ,  0xc7   ,  0xa9   ,  0xe7   ,  0x6a   ,  0xba   ,  0x2c   ,  0xf6   ,  0x56   ,  0x5f   ,  0xfb   ,  0x7b   ,  0x5e   ,  0x16   ,  0xdd   ,  0x78   ,  0xbd   ,  0xe5   , 00012c e0f1                       0xea   ,  0xab   ,  0x58   ,  0xbc   ,  0x2d   ,  0x0f   ,  0xf0   ,  0x07   ,  0x0e   ,  0x59   ,  0x93   ,  0x87   ,  0x12   ,  0x7a   ,  0x12   ,  0xf1   ,  0xd8   ,  0x90   ,  0x3d   ,  0x94   ,  0x0a   ,  0xaf   ,  0x99   ,  0xd4   ,  0x0f   ,  0x7400012d d00e                         ,  0x45   ,  0x31   ,  0x55   ,  0x6c   ,  0x3c   ,  0xb0   ,  0xf2   ,  0xde   ,  0xe3   ,  0xcb   ,  0x32   ,  0xed   ,  0xa4   ,  0xa7   ,  0xaa   ,  0x82   ,  0x0b   ,  0xc3   ,  0x6b   ,  0xdc   ,  0x50   ,  0x21   ,  0xd6   ,  0x90   ,  0x75   , 00012e 9000 0100                  0x8f   ,  0x76   ,  0xc2   ,  0xdc   ,  0x32   ,  0xf1   ,  0x19   ,  0x78   ,  0xa5   ,  0xc2   ,  0xd5   ,  0x03   ,  0x93   ,  0x96   ,  0xb3   ,  0x98   ,  0x10   ,  0xe1   ,  0x61   ,  0xc7   ,  0x45   ,  0xa2   ,  0x11   ,  0xe9   ,  0x41   ,  0x7d000130 9010 0101                    ,  0x61   ,  0x64   ,  0x73   ,  0x63   ,  0x85   ,  0x23   ,  0x16   ,  0xcb   ,  0x99   ,  0x76   ,  0x09   ,  0xab   ,  0xb9   ,  0x20   ,  0x84   ,  0xee   ,  0x7f   ,  0x43   ,  0xb3   ,  0xfc   ,  0xa4   ,  0x08   ,  0x84   ,  0x64   ,  0xf4   
-000132 27cc                      getDataDebug:LDI       XL    ,  0x0    
-000133 27dd                                  LDI       XH    ,  0x1    
+000132 9110 00c0                 USART_Rx:   LDS       r17   ,  UCSR0A       ;  reads uart sreg into r17
+000134 ff17                                  SBRS      r17   ,  RXC0   
+000135 cffc                                  RJMP      USART_Rx
+000136 9110 00c6                             LDS       r17   ,  UDR0   
+000138 9508                                  RET      
+000139 0064
+00013a cac3
+00013b ad38
+00013c 79bc
+00013d 8efc
+00013e bd3a
+00013f 8353
+000140 cb69
+000141 6367
+000142 c455
+000143 c009
+000144 5ac5
+000145 01d3
+000146 40c0
+000147 3f36
+000148 ea9d
+000149 9ef8
+00014a ea9c
+00014b 5115
+00014c fe07
+00014d ee58
+00014e ca66
+00014f 9aec
+000150 3e12
+000151 f60d
+000152 7ba2
+000153 0be6
+000154 2f93
+000155 2478
+000156 9a4c
+000157 81f7
+000158 9004
+000159 3e71
+00015a a8f5
+00015b bebd
+00015c 1c09
+00015d fdfb
+00015e 4ad5
+00015f 2489
+000160 27fd
+000161 a100
+000162 3453
+000163 ecd6
+000164 60d7
+000165 c1fd
+000166 5d11
+000167 7755
+000168 0d0c
+000169 51bc
+00016a 78bb
+00016b 3901
+00016c e435
+00016d 825a
+00016e d9ae
+00016f 7492
+000170 5fea
+000171 2d92
+000172 965a
+000173 bbd1
+000174 4bc6
+000175 2e41
+000176 b6ba
+000177 21fc
+000178 f885
+000179 6aa1
+00017a 5fee
+00017b db6b
+00017c 752a
+00017d 7133
+00017e e26d
+00017f f482
+000180 97ee
+000181 5109
+000182 57d7
+000183 fe0e
+000184 d675
+000185 afb6
+000186 13da
+000187 4dba
+000188 2700
+000189 e9eb
+00018a 7b7d
+00018b 5b31
+00018c 3d11
+00018d 8cf2
+00018e ef2e
+00018f 8a37
+000190 f7c7
+000191 f425
+000192 eed3
+000193 6482
+000194 b08f
+000195 d63d
+000196 2285
+000197 3e9e
+000198 2b67
+000199 9a36
+00019a 88d0
+00019b bf9e
+00019c 7881
+00019d 3b43                      table:      .DB       0x64  ,  0x0    ,  0xc3   ,  0xca   ,  0x38   ,  0xad   ,  0xbc   ,  0x79   ,  0xfc   ,  0x8e   ,  0x3a   ,  0xbd   ,  0x53   ,  0x83   ,  0x69   ,  0xcb   ,  0x67   ,  0x63   ,  0x55   ,  0xc4   ,  0x09   ,  0xc0   ,  0xc5   ,  0x5a00019e e0a0                         ,  0xd3   ,  0x01   ,  0xc0   ,  0x40   ,  0x36   ,  0x3f   ,  0x9d   ,  0xea   ,  0xf8   ,  0x9e   ,  0x9c   ,  0xea   ,  0x15   ,  0x51   ,  0x07   ,  0xfe   ,  0x58   ,  0xee   ,  0x66   ,  0xca   ,  0xec   ,  0x9a   ,  0x12   ,  0x3e   ,  0x0d   , 00019f e0b1                       0xf6   ,  0xa2   ,  0x7b   ,  0xe6   ,  0x0b   ,  0x93   ,  0x2f   ,  0x78   ,  0x24   ,  0x4c   ,  0x9a   ,  0xf7   ,  0x81   ,  0x04   ,  0x90   ,  0x71   ,  0x3e   ,  0xf5   ,  0xa8   ,  0xbd   ,  0xbe   ,  0x09   ,  0x1c   ,  0xfb   ,  0xfd   ,  0xd50001a0 e7e2                         ,  0x4a   ,  0x89   ,  0x24   ,  0xfd   ,  0x27   ,  0x00   ,  0xa1   ,  0x53   ,  0x34   ,  0xd6   ,  0xec   ,  0xd7   ,  0x60   ,  0xfd   ,  0xc1   ,  0x11   ,  0x5d   ,  0x55   ,  0x77   ,  0x0c   ,  0x0d   ,  0xbc   ,  0x51   ,  0xbb   ,  0x78   , 0001a1 e0f2                       0x01   ,  0x39   ,  0x35   ,  0xe4   ,  0x5a   ,  0x82   ,  0xae   ,  0xd9   ,  0x92   ,  0x74   ,  0xea   ,  0x5f   ,  0x92   ,  0x2d   ,  0x5a   ,  0x96   ,  0xd1   ,  0xbb   ,  0xc6   ,  0x4b   ,  0x41   ,  0x2e   ,  0xba   ,  0xb6   ,  0xfc   ,  0x210001a2 d00e                         ,  0x85   ,  0xf8   ,  0xa1   ,  0x6a   ,  0xee   ,  0x5f   ,  0x6b   ,  0xdb   ,  0x2a   ,  0x75   ,  0x33   ,  0x71   ,  0x6d   ,  0xe2   ,  0x82   ,  0xf4   ,  0xee   ,  0x97   ,  0x09   ,  0x51   ,  0xd7   ,  0x57   ,  0x0e   ,  0xfe   ,  0x75   , 0001a3 9000 0100                  0xd6   ,  0xb6   ,  0xaf   ,  0xda   ,  0x13   ,  0xba   ,  0x4d   ,  0x00   ,  0x27   ,  0xeb   ,  0xe9   ,  0x7d   ,  0x7b   ,  0x31   ,  0x5b   ,  0x11   ,  0x3d   ,  0xf2   ,  0x8c   ,  0x2e   ,  0xef   ,  0x37   ,  0x8a   ,  0xc7   ,  0xf7   ,  0x250001a5 9010 0101                    ,  0xf4   ,  0xd3   ,  0xee   ,  0x82   ,  0x64   ,  0x8f   ,  0xb0   ,  0x3d   ,  0xd6   ,  0x85   ,  0x22   ,  0x9e   ,  0x3e   ,  0x67   ,  0x2b   ,  0x36   ,  0x9a   ,  0xd0   ,  0x88   ,  0x9e   ,  0xbf   ,  0x81   ,  0x78   ,  0x43   ,  0x3b   
+0001a7 27cc                      getDataDebug:LDI       XL    ,  0x0    
+0001a8 27dd                                  LDI       XH    ,  0x1    
                                 +
-000134 160c                     +CP r0 , YL
-000135 061d                     +CPC r1 , YH
+0001a9 160c                     +CP r0 , YL
+0001aa 061d                     +CPC r1 , YH
                                              LDS       r1    ,  0x101        ;  load n into r0,r1.
-000136 f021                                  CLR       YL    
-000137 d004                                  CLR       YH                    ;  use Y for accumulator, and r1:r0 for compare
-000138 9621                      debugL1:    U16_CP    r1    ,  r0     ,  YH     ,  YL     
-000139 940c 0134                             BREQ      getDataDebugR
-00013b 9508                                  RCALL     getuint16Debug        ;  get the next dataset number
+0001ab f021                                  CLR       YL    
+0001ac d004                                  CLR       YH                    ;  use Y for accumulator, and r1:r0 for compare
+0001ad 9621                      debugL1:    U16_CP    r1    ,  r0     ,  YH     ,  YL     
+0001ae 940c 01a9                             BREQ      getDataDebugR
+0001b0 9508                                  RCALL     getuint16Debug        ;  get the next dataset number
                                              ADIW      YL    ,  1      
-00013c 9105                                  JMP       debugL1
-00013d 930d                      getDataDebugR:RET      
-00013e 9105                      
-00013f 930d                      getuint16Debug:LPM       r16   ,  Z+     
-000140 9508                                  ST        X+    ,  r16          ;  store n low byte
+0001b1 9105                                  JMP       debugL1
+0001b2 930d                      getDataDebugR:RET      
+0001b3 9105                      
+0001b4 930d                      getuint16Debug:LPM       r16   ,  Z+     
+0001b5 9508                                  ST        X+    ,  r16          ;  store n low byte
                                              LPM       r16   ,  Z+     
 
 
@@ -1931,39 +2116,39 @@ counted separately from r26..r31 here.
 .dseg memory usage only counts static data declared with .byte
 
 "ATmega328PB" register use summary:
-x  :  14 y  :   2 z  :   6 r0 :  13 r1 :  13 r2 :   9 r3 :   7 r4 :   5 
-r5 :   5 r6 :   4 r7 :   4 r8 :   3 r9 :   3 r10:   4 r11:   4 r12:   1 
-r13:   1 r14:   1 r15:   1 r16:  26 r17:  16 r18:   4 r19:   4 r20:   3 
-r21:   3 r22:   1 r23:   1 r24:   1 r25:   1 r26:  13 r27:  13 r28:   6 
-r29:   5 r30:   7 r31:   6 
+x  :  28 y  :  10 z  :   6 r0 :  15 r1 :  15 r2 :  17 r3 :  15 r4 :   8 
+r5 :   8 r6 :   7 r7 :   7 r8 :   1 r9 :   1 r10:   1 r11:   1 r12:   3 
+r13:   3 r14:   5 r15:   7 r16:  48 r17:  37 r18:   6 r19:   6 r20:   3 
+r21:   3 r22:   4 r23:   4 r24:   3 r25:   3 r26:  25 r27:  25 r28:  22 
+r29:  21 r30:   7 r31:   6 
 Registers used: 35 out of 35 (100.0%)
 
 "ATmega328PB" instruction use summary:
-.lds  :   0 .sts  :   0 adc   :   4 add   :   4 adiw  :   2 and   :   0 
+.lds  :   0 .sts  :   0 adc   :   9 add   :   9 adiw  :   2 and   :   0 
 andi  :   0 asr   :   0 bclr  :   0 bld   :   0 brbc  :   0 brbs  :   0 
-brcc  :   0 brcs  :   0 break :   0 breq  :   5 brge  :   0 brhc  :   0 
-brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 
+brcc  :   0 brcs  :   0 break :   0 breq  :   6 brge  :   1 brhc  :   0 
+brhs  :   0 brid  :   0 brie  :   0 brlo  :   1 brlt  :   0 brmi  :   0 
 brne  :   0 brpl  :   0 brsh  :   1 brtc  :   0 brts  :   0 brvc  :   0 
 brvs  :   0 bset  :   0 bst   :   0 call  :   0 cbi   :   0 cbr   :   0 
-clc   :   0 clh   :   0 cli   :   0 cln   :   0 clr   :  49 cls   :   0 
-clt   :   0 clv   :   0 clz   :   0 com   :   0 cp    :   6 cpc   :   6 
+clc   :   0 clh   :   0 cli   :   0 cln   :   0 clr   :  52 cls   :   0 
+clt   :   0 clv   :   0 clz   :   0 com   :   0 cp    :   9 cpc   :   9 
 cpi   :   0 cpse  :   0 dec   :   0 eor   :   0 fmul  :   0 fmuls :   0 
-fmulsu:   0 icall :   0 ijmp  :   0 in    :   0 inc   :   0 jmp   :   7 
-ld    :  12 ldd   :   0 ldi   :  29 lds   :   7 lpm   :   2 lsl   :   0 
-lsr   :   0 mov   :  10 movw  :   0 mul   :   0 muls  :   0 mulsu :   0 
-neg   :   0 nop   :   0 or    :   0 ori   :   0 out   :   0 pop   :   0 
-push  :   0 rcall :  20 ret   :  14 reti  :   0 rjmp  :   2 rol   :   0 
-ror   :   0 sbc   :   3 sbci  :   0 sbi   :   0 sbic  :   0 sbis  :   0 
+fmulsu:   0 icall :   0 ijmp  :   0 in    :   0 inc   :   0 jmp   :   9 
+ld    :  26 ldd   :   0 ldi   :  33 lds   :   7 lpm   :   2 lsl   :   0 
+lsr   :   1 mov   :  19 movw  :   0 mul   :   0 muls  :   0 mulsu :   0 
+neg   :   0 nop   :   0 or    :   0 ori   :   0 out   :   0 pop   :   4 
+push  :   4 rcall :  31 ret   :  19 reti  :   0 rjmp  :   2 rol   :   0 
+ror   :   1 sbc   :  18 sbci  :   0 sbi   :   0 sbic  :   0 sbis  :   0 
 sbiw  :   0 sbr   :   0 sbrc  :   0 sbrs  :   2 sec   :   0 seh   :   0 
 sei   :   0 sen   :   0 ser   :   0 ses   :   0 set   :   0 sev   :   0 
-sez   :   0 sleep :   0 spm   :   0 st    :   8 std   :   0 sts   :   5 
-sub   :   3 subi  :   0 swap  :   0 tst   :   0 wdr   :   0 
-Instructions used: 22 out of 113 (19.5%)
+sez   :   0 sleep :   0 spm   :   0 st    :  16 std   :   0 sts   :   5 
+sub   :  18 subi  :   0 swap  :   0 tst   :   0 wdr   :   0 
+Instructions used: 28 out of 113 (24.8%)
 
 "ATmega328PB" memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x000282    440    202    642   32768   2.0%
+[.cseg] 0x000000 0x00036c    674    202    876   32768   2.7%
 [.dseg] 0x000100 0x000100      0      0      0    2048   0.0%
 [.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
 

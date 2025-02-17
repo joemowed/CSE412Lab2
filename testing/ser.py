@@ -4,28 +4,41 @@ import time
 
 class Ser:
     debug = False
-    delaySeconds = 0.05
+    delaySeconds = 0.001
 
     def __init__(self, baud):
         self.serial = serial.Serial(port="COM6", baudrate=baud)
+        self.serial.set_buffer_size(4096,4096)
+        self.serial.reset_input_buffer()
+        self.serial.reset_output_buffer()
         self.serial.flush()
         self.serial.read_all()
 
-    def uint16_Tx(self, i):
+    def uint16_Tx(self,dataSet):
+        bin = []
+        bin.append(int(len(dataSet)).to_bytes(length=2))
+        for each in dataSet:
+            bin.append(int(each).to_bytes(length=2))
+        for each in bin:
+            lower = int(each[1]).to_bytes()
+            upper = int(each[0]).to_bytes()
+            self.serial.write(lower)
+            time.sleep(self.delaySeconds)
+            self.serial.write(upper)
+            time.sleep(self.delaySeconds)
+
+
+    def uint16_TxACK(self, i):
         assert i < 65536, "argument i too large for uint16"
         assert i >= 0, "argument i too small for uint16"
         ret = i.to_bytes(length=2)
         lower = int(ret[1]).to_bytes()
         upper = int(ret[0]).to_bytes()
-        while self.serial.read_all().hex() != "f0":
-            pass
         self.dbgPrint("ACK recived, sending lower")
-        time.sleep(self.delaySeconds)
+        time.sleep(6*self.delaySeconds)
         self.serial.write(lower)
-        while self.serial.read_all().hex() != "f0":
-            pass
         self.dbgPrint("ACK recived, sending upper")
-        time.sleep(self.delaySeconds)
+        time.sleep(6*self.delaySeconds)
         self.serial.write(upper)
 
         if self.debug:
@@ -37,6 +50,8 @@ class Ser:
 
     def test(self, dataSet: list):
         self.sendList(dataSet)
+        while self.serial.read_all().hex() != "f0":
+            pass
         startTime = time.time()
         self.serial.read_until(b"\xff")
         stopTime = time.time()
@@ -44,9 +59,9 @@ class Ser:
         return stopTime - startTime
 
     def sendList(self, dataSet: list):
-        self.uint16_Tx(len(dataSet))
-        for i in dataSet:
-            self.uint16_Tx(i)
+        while self.serial.read_all().hex() != "f0":
+            pass
+        self.uint16_Tx(dataSet)
         print(f"datset of size {len(dataSet)} uploaded", end=" , ")
 
     def getList(self, dataSetSize):

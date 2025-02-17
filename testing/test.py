@@ -12,10 +12,12 @@ import random
 # wait for MCU to send 0x1, indicating data recived and test startj
 ser = Ser(9600)
 # max uint16s on atmega328PB is ~1000, with 2K SRAM
-testMax = 790
+testMax = 810
 testCount = int(testMax / 10)
 repeatCount = 10
-ser.uint16_Tx(testCount * repeatCount)
+while ser.serial.read_all().hex() != "f0":
+    pass
+ser.uint16_TxACK(testCount*repeatCount)
 fileString = ""
 for n in range(10, testMax + 10, 10):
     totalTimes = 0
