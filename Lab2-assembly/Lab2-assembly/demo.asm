@@ -47,18 +47,18 @@
             SBC      @0     ,  @2           ;  subtract the high bytes w/ carry bit from low bytes
             .ENDMACRO                       ;  end the macro definition
             .MACRO   U16_PUSH               ;  args - rrH,rrL pushes uint onto stack
-            PUSH     @1                     ;  push low byte onto stack
             PUSH     @0                     ;  push high byte onto stack
+            PUSH     @1                     ;  push low byte onto stack
             .ENDMACRO                       ;  end the macro definition
             .MACRO   U16_POP                ;  args - rrH,rrL pops uint from the stack
-            POP      @0                     ;  pop high byte
             POP      @1                     ;  pop low byte
+            POP      @0                     ;  pop high byte
             .ENDMACRO                       ;  end the macro definition
             .LISTMAC                        ;  expand macros in the listing file
-;  
-;  
-;  
-;  
+            ;
+            ;
+            ;
+            ;
 ;  Division Source Code, Single Call
 ;  
 ;  Declare Variables
@@ -83,9 +83,8 @@ int0v:      JMP      int0h                  ;  External interrupt vector at addr
 ;  ******************************
             .ORG     0x100                  ;  originate MAIN at address 0x100 in FLASH memory (step through the code)
 ;  For these stack is shown as array of 2-byte values, with value at first index bottom of stack and value at top as last index (e.g. [bottom,middle1,middle2...,top]
-ZEROALL ; required for running division algorithm on physical hardware, only on simulator is the line 89 LDS gautanteed to load a zero when clearing vars
 main:       CALL     init                   ;  call init routine, SP=0x08FF ,Stack = [],PC=0x0100
-endmain:    JMP      sort                   ;  halt program, SP=0x08FF,Stack=[],PC=0x0102
+endmain:    JMP      endmain                ;  halt program, SP=0x08FF,Stack=[],PC=0x0102
 init:       LDS      r0     ,  count        ;  SP=0x08FD, Stack=[0x0102], PC=0x0104
             STS      quotient,  r0          ;  use the same r0 value to clear the quotient-
             STS      remainder,  r0         ;  and the remainder storage locations
@@ -127,11 +126,13 @@ divide1:    INC      r0                     ;  Increment loop counter
 divide2:    RET                             ;  SP=0x08F7, Stack=[0x0102,0x010B,0x010F,0x012D], PC=0x0139
 int0h:      JMP      int0h                  ;  interrupt 0 handler goes here
 
-;  
-;  
-;  
-;  
-;  Sorting Source code, table
+;
+;
+;
+;
+; Sorting Source code, table
+            .CSEG                           ;  start writing in code segment
+            .ORG     0x0                    ;  code segment start address
             ZEROALL                         ;  zero everything for repeatability and readability of memory/processor view
 sort:       RCALL    getDataDebug           ;  Load constant dataset from flash into sram
 ;  data for sorting is stored in sram
@@ -263,7 +264,6 @@ getuint16Debug:LPM      r16    ,  Z+        ;  same as getuint16, but loads uint
             LPM      r16    ,  Z+           ;  load high byte
             ST       X+     ,  r16          ;  store n high byte
             RET                             ;  return after getting both bytes of the uint16
-
 zeroSRAM:   LDI      r16    ,  0x0          ;  zero the first 0x500 values in sram so the sorted values are easy to see in the memory viewer
             LDI      YH     ,  0x5          ;  set high byte
             LDI      YL     ,  0x1          ;  use Y for loop stop condition
